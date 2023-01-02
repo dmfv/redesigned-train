@@ -1,4 +1,4 @@
-# redesigned-train
+# redesigned-train folder:
 test led manipulator server. spagetti code
 
 compiled and tested for Windows with: 
@@ -12,3 +12,8 @@ valgrind --leak-check=full \
          --verbose \
          --log-file=valgrind-out.txt \
          ./server1.exe 8088
+
+new version build (need boost_asio head library):
+mkdir build && cd build 
+cmake ..
+cmake --build .

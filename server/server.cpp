@@ -2,17 +2,16 @@
 #include <optional>
 #include <queue>
 #include <unordered_set>
-
-
 #include <iostream>
+#include <list>
+#include "led_commands.h"
 
 namespace io = boost::asio;
 using tcp = io::ip::tcp;
 using error_code = boost::system::error_code;
 using namespace std::placeholders;
 
-using message_handler = std::function<void (std::string)>; // callback function 
-// using message_handler = std::function<void (std::string, std::string&)>; // callback function 
+using message_handler = std::function<void (const std::string&, std::string&)>; 
 using error_handler = std::function<void (error_code&)>;
 
 class session : public std::enable_shared_from_this<session> {
@@ -28,11 +27,12 @@ public:
     }
 
 
-    void start(message_handler&& on_message, error_handler&& on_error) {
-        this->on_message = std::move(on_message);
-        this->on_error = std::move(on_error);
+    void start(const message_handler& on_message, const error_handler& on_error) {
+        this->on_message = on_message;
+        this->on_error   = on_error;
         error_code error;
-        std::cout << "Connected from client: " << socket.remote_endpoint(error) << std::endl;
+        endpoint = socket.remote_endpoint(error);
+        std::cout << endpoint << " connected" << std::endl;
         async_read();
     }
 
@@ -44,6 +44,11 @@ public:
     void close_connection() {
         close_flag = true;
         post("Server closed connection\n");
+
+        size_t counter = 0; // counter to avoid infinite loop
+        while (!socket_closed || ++counter < 50) { // 1 second timeout
+            std::this_thread::sleep_for(std::chrono::milliseconds(20));
+        }
     }
 
 private:
@@ -55,14 +60,23 @@ private:
     void on_read(error_code error, std::size_t bytes_transferred) {
         if(!error) {
             std::stringstream message;
-            message << socket.remote_endpoint(error) << ": " << std::istream(&streambuf).rdbuf();
+            // message << endpoint << ": " << std::istream(&streambuf).rdbuf(); // debug version
+            message << std::istream(&streambuf).rdbuf();
             streambuf.consume(bytes_transferred);
-            on_message(message.str());
+            std::string callbackOutput;
+            on_message(message.str(), callbackOutput);
+            callbackOutput += "\n";
+            post(callbackOutput);
             async_read();
         }
         else {
             socket.close(error);
-            on_error(error);
+            socket_closed = true;
+            if (error.message() == "The operation completed successfully") {
+                std::cout << endpoint << " disconnected" << std::endl;
+            } else {
+                on_error(error);
+            }
         }
     }
 
@@ -71,7 +85,6 @@ private:
     }
 
     void on_write(error_code error, std::size_t bytes_transferred) {
-        // if no errors
         if (!error) {
             outgoing.pop();
             if(!outgoing.empty())
@@ -79,20 +92,23 @@ private:
                 async_write();
             }
         // if got close connection flag doesn't matter error exists or not
-        } else if (close_flag) {
+        } else if (close_flag || error) {
             socket.close(error);
-            if (error) {
+            socket_closed = true;
+            std::cout << "error " << error << std::endl;
+            if (error == boost::asio::error::eof) {
+                std::cout << "Client disconnected" << std::endl;
+            } else {
                 on_error(error);
             }
-        } else if (error) {
-            socket.close(error);
-            on_error(error);
         }
     }
 
     tcp::socket socket; 
+    tcp::endpoint endpoint;
     io::streambuf streambuf; 
     bool close_flag = false;
+    bool socket_closed = false;
     std::queue<std::string> outgoing;
     // callbacks
     message_handler on_message;
@@ -102,9 +118,14 @@ private:
 class server {
 public:
 
-    server(io::io_context& io_context, std::uint16_t port)
-    : io_context(io_context)
-    , acceptor  (io_context, tcp::endpoint(tcp::v4(), port))
+    server(io::io_context& io_context, 
+           std::uint16_t port,
+           message_handler on_message,
+           error_handler on_error)
+    : io_context(io_context),
+      acceptor(io_context, tcp::endpoint(tcp::v4(), port)),
+      on_message(on_message),
+      on_error(on_error)
     {
     }
 
@@ -114,8 +135,7 @@ public:
         acceptor.async_accept(*socket, [&] (error_code error)
         {
             auto client = std::make_shared<session>(std::move(*socket));
-            client->start([] (std::string m)     {std::cout << "On message handler " << m;}, 
-                          [] (error_code& error) {std::cout << "Error occurred: "    << error.message() << std::endl;});
+            client->start(on_message, on_error);
             client->post("Successfully connected to server\n\r"); 
             clients.insert(client);
 
@@ -129,14 +149,6 @@ public:
             client->close_connection();
         }
     }
-    // notify all clients
-    // void post(std::string const& message)
-    // {
-    //     for(auto& client : clients)
-    //     {
-    //         client->post(message);
-    //     }
-    // }
 
 private:
 
@@ -144,12 +156,22 @@ private:
     tcp::acceptor acceptor;
     std::optional<tcp::socket> socket;
     std::unordered_set<std::shared_ptr<session>> clients;
+    // callbacks for sessions
+    message_handler on_message;
+    error_handler on_error;
 };
 
-int main()
-{
+int main() {
+    LedManager lm;
+    std::unique_ptr<CommandContainer> CC = std::make_unique<CommandContainer>(std::list<BaseCommand*> { new GetLedStateCommand(&lm),
+                                                                                                        new SetLedStateCommand(&lm),
+                                                                                                        new GetLedColorCommand(&lm),
+                                                                                                        new SetLedColorCommand(&lm),
+                                                                                                        new GetLedRateCommand(&lm),
+                                                                                                        new SetLedRateCommand(&lm)});
     io::io_context io_context;
-    server srv(io_context, 15001);
+    server srv(io_context, 15001, [&] (const std::string& in, std::string& out) {CC->execute(in, out); std::cout << "in \"" << in << "\" out \"" << out << "\"" << std::endl;},
+                                  [ ] (error_code& error) {std::cout << "Error occurred: "    << error.message() << std::endl;});
     srv.async_accept();
     io_context.run();
     return 0;

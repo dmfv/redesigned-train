@@ -10,22 +10,23 @@
 // abstract class for basic command
 class BaseCommand {
 public:
-    BaseCommand(LedManager* ledManager) : ledManager(ledManager) { }
+    BaseCommand(LedManager* ledManager, const std::string& cmdName = "baseCommand") : ledManager(ledManager), cmdName(cmdName) { }
     virtual ~BaseCommand() {}
     // must return true if the command executed successfully, otherwise false
     virtual bool run(const std::string& input, std::string& output) = 0;
+    const std::string& getName() const { return cmdName; }
 protected:
     LedManager* ledManager;
+    const std::string cmdName;
 };
 
 class GetLedStateCommand : public BaseCommand {
 public:
-    GetLedStateCommand(LedManager* ledManager) : BaseCommand(ledManager) { }
+    GetLedStateCommand(LedManager* ledManager) : BaseCommand(ledManager, "get-led-state\n") {  }
     virtual ~GetLedStateCommand() { }
     virtual bool run(const std::string& input, std::string& output) override {
         // verify input
-        // if (input.substr(0, 14) != "get-led-state\n")
-        if (input != "get-led-state\n")
+        if (input != cmdName)
             return false;
         // get led state and set output
         output = "OK " + ledManager->getLedStateString();
@@ -35,12 +36,12 @@ public:
 
 class GetLedColorCommand : public BaseCommand {
 public:
-    GetLedColorCommand(LedManager* ledManager) : BaseCommand(ledManager) { }
+    GetLedColorCommand(LedManager* ledManager) : BaseCommand(ledManager, "get-led-color\n") { }
     virtual ~GetLedColorCommand() { }
     virtual bool run(const std::string& input, std::string& output) override {
         bool commandWasExecuted = false;
         // verify input
-        if (input != "get-led-color\n")
+        if (input != cmdName)
             return false;
         // get led state and set output
         output = "OK " + ledManager->getLedColorString();
@@ -50,12 +51,12 @@ public:
 
 class GetLedRateCommand : public BaseCommand {
 public:
-    GetLedRateCommand(LedManager* ledManager) : BaseCommand(ledManager) { }
+    GetLedRateCommand(LedManager* ledManager) : BaseCommand(ledManager, "get-led-rate\n") { }
     virtual ~GetLedRateCommand() { }
     virtual bool run(const std::string& input, std::string& output) override {
         bool commandWasExecuted = false;
         // verify input
-        if (input != "get-led-rate\n")
+        if (input != cmdName)
             return false;
         output = "OK " + std::to_string(ledManager->getLedRate());
         return true;
@@ -64,7 +65,7 @@ public:
 
 class SetLedStateCommand : public BaseCommand {
 public:
-    SetLedStateCommand(LedManager* ledManager) : BaseCommand(ledManager) { }
+    SetLedStateCommand(LedManager* ledManager) : BaseCommand(ledManager, "set-led-state") { }
     virtual ~SetLedStateCommand() { }
     virtual bool run(const std::string& input, std::string& output) override {
         bool commandWasExecuted = false;
@@ -80,13 +81,11 @@ public:
         }
         return true;
     }
-private:
-    inline static const std::string cmdName = "set-led-state"; // remove inline if compiled with c++14 or lower
 };
 
 class SetLedColorCommand : public BaseCommand {
 public:
-    SetLedColorCommand(LedManager* ledManager) : BaseCommand(ledManager) { }
+    SetLedColorCommand(LedManager* ledManager) : BaseCommand(ledManager, "set-led-color") { }
     virtual ~SetLedColorCommand() { }
     virtual bool run(const std::string& input, std::string& output) override {
         bool commandWasExecuted = false;
@@ -102,13 +101,11 @@ public:
         }
         return true;
     }
-private:
-    inline static const std::string cmdName = "set-led-color"; // remove inline if compiled with c++14 or lower
 };
 
 class SetLedRateCommand : public BaseCommand {
 public:
-    SetLedRateCommand(LedManager* ledManager) : BaseCommand(ledManager) { }
+    SetLedRateCommand(LedManager* ledManager) : BaseCommand(ledManager, "set-led-rate") { }
     virtual ~SetLedRateCommand() { }
     virtual bool run(const std::string& input, std::string& output) override {
         bool commandWasExecuted = false;
@@ -124,8 +121,6 @@ public:
         }
         return true;
     }
-private:
-    inline static const std::string cmdName = "set-led-rate";
 };
 
 
@@ -140,13 +135,17 @@ public:
     virtual ~CommandContainer() {
         commandsList.remove_if( [] (BaseCommand* elem) { delete elem; return true; } ); // use this instead of clear() won't clean memory
     }
-
+    // return true if at least one command finished successfully (processed data correctly)
     bool execute(const std::string& argument, std::string& output) {
         bool cmdWasExecuted = false;
         for (auto cmd = commandsList.begin(); cmd != commandsList.end(); ++cmd) {
             cmdWasExecuted = (*cmd)->run(argument, output);
+            std::cout << "Command executed: " << (*cmd)->getName() << std::endl;
             if (cmdWasExecuted) break;
         }
+        if (!cmdWasExecuted) 
+            output = "FAILED: unknown command \"" + argument + "\"";
+        std::cout << "Command was executed status: " << cmdWasExecuted << std::endl;
         return cmdWasExecuted;
     }
 

@@ -2,8 +2,8 @@
 test led manipulator server. spagetti code
 
 compiled and tested for Windows with: 
-g++ server.cpp -o -g -Wall server1
-g++ client.cpp -o -g -Wall client1
+g++ server.cpp -o -g -Wall server
+g++ client.cpp -o -g -Wall client
 
 tested with valgrind:
 valgrind --leak-check=full \
@@ -13,7 +13,8 @@ valgrind --leak-check=full \
          --log-file=valgrind-out.txt \
          ./server1.exe 8088
 
-new version build (need boost_asio head library):
+# new version build (need boost_asio head library):
+
 mkdir build && cd build 
 cmake ..
 cmake --build .

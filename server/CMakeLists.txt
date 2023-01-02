@@ -13,8 +13,7 @@ set(BOOST_LIBRARY_DIRS "${BOOST_ROOT}/stage/lib")
 
 include_directories(include)
 set(SOURCES server.cpp 
-            # sources/led_manipulator.cpp 
-            # sources/led_commands.cpp
+            sources/led_manager.cpp 
    )
 
 # set(COMPILER_FLAGS -Wall)

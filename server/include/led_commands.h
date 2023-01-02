@@ -1,16 +1,11 @@
-/* The port number is passed as an argument */
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
-#include <unistd.h>
-#include <sys/types.h> 
-#include <sys/socket.h>
-#include <netinet/in.h>
+#pragma once
 
 #include <list>
 #include <string>
-#include <iostream>
 #include <memory>
+// #include <functional> // for new modification (get rid of LedManager ptr in Command classes and change to)
+
+#include "led_manager.h"
 
 // abstract class for basic command
 class BaseCommand {

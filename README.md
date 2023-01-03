@@ -44,12 +44,12 @@ In additional to linux build use:
 g++ client.cpp
 ```
 ---
-### Run server:
+### Run server (win):
 ```bash 
 server.exe 32101
 ```
 you can run without argument in this case server will run on 15001 porn
-### Run client to localhost 32101
+### Run client to localhost 32101 (win)
 ```bash 
 client.exe 127.0.0.1 32101
 ```

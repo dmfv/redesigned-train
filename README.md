@@ -1,6 +1,10 @@
 # redesigned-train
-### Requerments:
-located in requirments.pdf
+### Requirements:
+* asynchronous server
+* can work with multiple clients
+* process input data 
+* easy to update new ways to process data
+full info located in requirements.pdf
 ### Dependencies
 boost-1.81.0 (put boost sources in root). Important: build header-only library
 TODO: check custom location library support (find_package)

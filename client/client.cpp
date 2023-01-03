@@ -7,66 +7,107 @@
 #include <netinet/in.h>
 #include <netdb.h>
 
+#include <iostream>
+
 class Client { 
 public:
-    Client(hostent *server, int portno) : server(server), portno(portno) {
-
+    Client(const char* host_ip, int portno) 
+        : host_ip(host_ip), portno(portno) 
+    { }
+    
+    ~Client() {
+        close(sockfd);
     }
+    bool start() {
+        if (!openSocket()) 
+            return false;
+        if (!connect())
+            return false;
+        return true;
+    }
+
+    bool openSocket() {
+        sockfd = socket(AF_INET, SOCK_STREAM, 0);
+        if (sockfd < 0) {
+            error_handler("Error: opening socket");
+            return false;
+        }
+        server = gethostbyname(host_ip);
+        if (server == NULL) {
+            fprintf(stderr,"Error: no such host\n");
+            return false;
+        }
+        return true;
+        
+    }
+
+    bool connect() {
+        bzero((char *) &serv_addr, sizeof(serv_addr));
+        serv_addr.sin_family = AF_INET;
+        bcopy((char *)server->h_addr, 
+              (char *)&serv_addr.sin_addr.s_addr,
+              server->h_length);
+        serv_addr.sin_port = htons(portno);
+        int n = ::connect(sockfd, (struct sockaddr *) &serv_addr, sizeof(serv_addr));
+        if (n < 0) {
+            error_handler("Error: connecting");
+            return false;
+        }
+        return true;
+    }
+    
+    // void write(const char *buf, size_t len) {
+    void write(const std::string& str) {
+        int n = ::write(sockfd, str.c_str(), str.size());
+        if (n < 0) 
+            error_handler("Error: writing to socket");
+    }
+
+    void read() {
+        bzero(buffer, buffer_size);
+        // TODO: change code below to non-blocking mode
+        int n = ::read(sockfd, buffer, buffer_size - 1);
+        if (n < 0) 
+            error_handler("Error: reading from socket");
+        printf("%s", buffer);
+    }
+
 private:
+    void error_handler(const char *msg) {
+        perror(msg);
+        // exit(0); // add if necessary
+    }
+
+    const size_t buffer_size = 256;
+    char buffer[256];
     int sockfd, portno;
+    const char *host_ip;
     struct sockaddr_in serv_addr;
     struct hostent *server;
 };
 
-void error(const char *msg)
-{
-    perror(msg);
-    exit(0);
-}
 
-int main(int argc, char *argv[])
-{
-        int sockfd, portno, n;
-        struct sockaddr_in serv_addr;
-        struct hostent *server;
+int main(int argc, char *argv[]) {
 
-        char buffer[256];
-        if (argc < 3) {
-        fprintf(stderr,"usage %s hostname port\n", argv[0]);
+    if (argc < 3 || argc > 3) {
+        std::cerr << "Usage " << argv[0] << " ip port" << std::endl;
         exit(0);
-        }
-        portno = atoi(argv[2]);
-        sockfd = socket(AF_INET, SOCK_STREAM, 0);
-        if (sockfd < 0) 
-            error("ERROR opening socket");
-        server = gethostbyname(argv[1]);
-        if (server == NULL) {
-            fprintf(stderr,"ERROR, no such host\n");
-            exit(0);
-        }
-        bzero((char *) &serv_addr, sizeof(serv_addr));
-        serv_addr.sin_family = AF_INET;
-        bcopy((char *)server->h_addr, 
-            (char *)&serv_addr.sin_addr.s_addr,
-            server->h_length);
-        serv_addr.sin_port = htons(portno);
-        if (connect(sockfd, (struct sockaddr *) &serv_addr, sizeof(serv_addr)) < 0) 
-            error("ERROR connecting");
-
-    for (;;) {
-        printf("Please enter the message: ");
-        bzero(buffer, 256);
-        fgets(buffer, 255, stdin);
-        n = write(sockfd, buffer, strlen(buffer));
-        if (n < 0) 
-            error("ERROR writing to socket");
-        // TODO: change code below to non-blocking mode
-        bzero(buffer,256);
-        n = read(sockfd, buffer, 255);
-        if (n < 0) 
-            error("ERROR reading from socket");
-        printf("%s", buffer);
     }
-    close(sockfd);
+
+    Client client {argv[1], atoi(argv[2])};
+    client.start();
+
+    std::string input;
+    for (;;) {
+        std::cout << "Please enter the message: ";
+        std::getline(std::cin, input);
+        if (input == "exit")
+            exit(0);
+        input += "\n"; // to add \n and avoid \r\n combination
+        // std::cout << "\"" << input << "\"" << std::endl; debug output
+        client.write(input);
+        client.read();
+    }
+    
     return 0;
 }

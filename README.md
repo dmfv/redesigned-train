@@ -1,7 +1,7 @@
 # redesigned-train
-####Requerments:
+#### Requerments:
 located in requirments.pdf
-####Dependencies
+#### Dependencies
 boost-1.81.0 (put boost sources in root). Important: build header-only library
 TODO: check custom location library support (find_package)
 

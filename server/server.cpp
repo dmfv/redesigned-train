@@ -163,12 +163,12 @@ private:
 int main() {
     LedManager lm;
     std::unordered_set<std::unique_ptr<BaseCommand>> cmds;
-    cmds.insert(std::make_unique<GetLedStateCommand>(&lm));  
-    cmds.insert(std::make_unique<SetLedStateCommand>(&lm));
-    cmds.insert(std::make_unique<GetLedColorCommand>(&lm));
-    cmds.insert(std::make_unique<SetLedColorCommand>(&lm));
-    cmds.insert(std::make_unique<GetLedRateCommand>(&lm));
-    cmds.insert(std::make_unique<SetLedRateCommand>(&lm));
+    cmds.insert(std::make_unique<GetLedStateCommand>(lm));  
+    cmds.insert(std::make_unique<SetLedStateCommand>(lm));
+    cmds.insert(std::make_unique<GetLedColorCommand>(lm));
+    cmds.insert(std::make_unique<SetLedColorCommand>(lm));
+    cmds.insert(std::make_unique<GetLedRateCommand>(lm));
+    cmds.insert(std::make_unique<SetLedRateCommand>(lm));
 
     std::unique_ptr<CommandContainer> CC = std::make_unique<CommandContainer>(std::move(cmds));
     io::io_context io_context;

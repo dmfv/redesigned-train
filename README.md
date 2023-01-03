@@ -1,10 +1,22 @@
 # redesigned-train
 ### Requirements:
-* asynchronous server
-* can work with multiple clients
+
+general
+* main language is C++ (up to 17 standard)
+* building tools GNU Make or Cmake
+* Boost and glibc are only available.
+* build and work correctly on Linux
+
+server side
+* server can work with multiple clients
 * process input data 
 * easy to update new ways to process data
+
+client side:
+* no any specific restrictions
+
 full info located in requirements.pdf
+
 ### Dependencies
 boost-1.81.0 (put boost sources in root). Important: build header-only library
 TODO: check custom location library support (find_package)

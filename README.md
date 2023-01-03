@@ -19,3 +19,13 @@ In additional to linux build use:
 ```bash 
 g++ client.cpp
 ```
+
+#### Run server:
+TODO: add port number configuration
+```bash 
+server.exe
+```
+#### Run client to localhost 15001
+```bash 
+client.exe 127.0.0.1 15001
+```

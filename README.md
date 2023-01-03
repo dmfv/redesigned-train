@@ -48,7 +48,7 @@ g++ client.cpp
 ```bash 
 server.exe 32101
 ```
-you can run without argument in this case server will run on 15001 porn
+you can run without argument in this case server will run on 15001 port
 ### Run client to localhost 32101 (win)
 ```bash 
 client.exe 127.0.0.1 32101

@@ -14,15 +14,15 @@ using namespace std::placeholders;
 using message_handler = std::function<void (const std::string&, std::string&)>; 
 using error_handler = std::function<void (error_code&)>;
 
-class session : public std::enable_shared_from_this<session> {
+class Session : public std::enable_shared_from_this<Session> {
 public:
 
-    session(tcp::socket&& socket)
+    Session(tcp::socket&& socket)
     : socket(std::move(socket))
     {
     }
 
-    ~session() {
+    ~Session() {
         close_connection();
     }
 
@@ -32,7 +32,7 @@ public:
         this->on_error   = on_error;
         error_code error;
         endpoint = socket.remote_endpoint(error);
-        std::cout << endpoint << " connected" << std::endl;
+        std::cout << endpoint << ": connected" << std::endl;
         async_read();
     }
 
@@ -54,17 +54,18 @@ public:
 private:
 
     void async_read() {
-        io::async_read_until(socket, streambuf, "\n", std::bind(&session::on_read, shared_from_this(), _1, _2));
+        io::async_read_until(socket, streambuf, "\n", std::bind(&Session::on_read, shared_from_this(), _1, _2));
     }
 
     void on_read(error_code error, std::size_t bytes_transferred) {
         if(!error) {
             std::stringstream message;
-            // message << endpoint << ": " << std::istream(&streambuf).rdbuf(); // debug version
             message << std::istream(&streambuf).rdbuf();
+            std::string callbackInput = message.str(), callbackOutput;
+
+            std::cout << endpoint << ": " << callbackInput; // logging
             streambuf.consume(bytes_transferred);
-            std::string callbackOutput;
-            on_message(message.str(), callbackOutput);
+            on_message(callbackInput, callbackOutput);
             callbackOutput += "\n";
             post(callbackOutput);
             async_read();
@@ -73,7 +74,7 @@ private:
             socket.close(error);
             socket_closed = true;
             if (error.message() == "The operation completed successfully") {
-                std::cout << endpoint << " disconnected" << std::endl;
+                std::cout << endpoint << ": disconnected" << std::endl;
             } else {
                 on_error(error);
             }
@@ -81,7 +82,7 @@ private:
     }
 
     void async_write() {
-        io::async_write(socket, io::buffer(outgoing.front()), std::bind(&session::on_write, shared_from_this(), _1, _2));
+        io::async_write(socket, io::buffer(outgoing.front()), std::bind(&Session::on_write, shared_from_this(), _1, _2));
     }
 
     void on_write(error_code error, std::size_t bytes_transferred) {
@@ -115,10 +116,10 @@ private:
     error_handler on_error;
 };
 
-class server {
+class Server {
 public:
 
-    server(io::io_context& io_context, 
+    Server(io::io_context& io_context, 
            std::uint16_t port,
            message_handler on_message,
            error_handler on_error)
@@ -134,7 +135,7 @@ public:
 
         acceptor.async_accept(*socket, [&] (error_code error)
         {
-            auto client = std::make_shared<session>(std::move(*socket));
+            auto client = std::make_shared<Session>(std::move(*socket));
             client->start(on_message, on_error);
             clients.insert(client);
 
@@ -142,7 +143,7 @@ public:
         });
     }
     
-    void stop_server() {
+    void stop_Server() {
         for(auto& client : clients)
         {
             client->close_connection();
@@ -150,18 +151,17 @@ public:
     }
 
 private:
-
     io::io_context& io_context;
     tcp::acceptor acceptor;
     std::optional<tcp::socket> socket;
-    std::unordered_set<std::shared_ptr<session>> clients;
-    // callbacks for sessions
+    std::unordered_set<std::shared_ptr<Session>> clients;
+    // callbacks for Sessions
     message_handler on_message;
     error_handler on_error;
 };
 
 int main() {
-    LedManager lm;
+    std::shared_ptr<LedManager> lm = std::make_shared<LedManager>();
     std::unordered_set<std::unique_ptr<BaseCommand>> cmds;
     cmds.insert(std::make_unique<GetLedStateCommand>(lm));  
     cmds.insert(std::make_unique<SetLedStateCommand>(lm));
@@ -172,7 +172,7 @@ int main() {
 
     std::unique_ptr<CommandContainer> CC = std::make_unique<CommandContainer>(std::move(cmds));
     io::io_context io_context;
-    server srv(io_context, 15001, [&] (const std::string& in, std::string& out) {CC->execute(in, out); std::cout << "in \"" << in << "\" out \"" << out << "\"" << std::endl;},
+    Server srv(io_context, 15001, [&] (const std::string& in, std::string& out) {CC->execute(in, out);},
                                   [ ] (error_code& error) {std::cout << "Error occurred: "    << error.message() << std::endl;});
     srv.async_accept();
     io_context.run();

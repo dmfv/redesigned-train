@@ -75,7 +75,7 @@ public:
 private:
     void error_handler(const char *msg) {
         perror(msg);
-        // exit(0); // add if necessary
+        exit(0); // add if necessary
     }
 
     const size_t buffer_size = 256;

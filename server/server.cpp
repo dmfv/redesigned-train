@@ -128,6 +128,7 @@ public:
       on_message(on_message),
       on_error(on_error)
     {
+        std::cout << "Running server on port " << port << std::endl;
     }
 
     void async_accept() {
@@ -160,7 +161,11 @@ private:
     error_handler on_error;
 };
 
-int main() {
+int main(int argc, char* argv[]) {
+    std::uint16_t server_port = 15001;
+    if (argc > 1) 
+        server_port = atoi(argv[1]);
+    
     std::shared_ptr<LedManager> lm = std::make_shared<LedManager>();
     std::unordered_set<std::unique_ptr<BaseCommand>> cmds;
     cmds.insert(std::make_unique<GetLedStateCommand>(lm));  
@@ -172,7 +177,7 @@ int main() {
 
     std::unique_ptr<CommandContainer> CC = std::make_unique<CommandContainer>(std::move(cmds));
     io::io_context io_context;
-    Server srv(io_context, 15001, [&] (const std::string& in, std::string& out) {CC->execute(in, out);},
+    Server srv(io_context, server_port, [&] (const std::string& in, std::string& out) {CC->execute(in, out);},
                                   [ ] (error_code& error) {std::cout << "Error occurred: "    << error.message() << std::endl;});
     srv.async_accept();
     io_context.run();

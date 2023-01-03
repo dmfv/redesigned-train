@@ -3,7 +3,7 @@
 #include <queue>
 #include <unordered_set>
 #include <iostream>
-#include <list>
+
 #include "led_commands.h"
 
 namespace io = boost::asio;
@@ -136,7 +136,6 @@ public:
         {
             auto client = std::make_shared<session>(std::move(*socket));
             client->start(on_message, on_error);
-            client->post("Successfully connected to server\n\r"); 
             clients.insert(client);
 
             async_accept();
@@ -163,12 +162,15 @@ private:
 
 int main() {
     LedManager lm;
-    std::unique_ptr<CommandContainer> CC = std::make_unique<CommandContainer>(std::list<BaseCommand*> { new GetLedStateCommand(&lm),
-                                                                                                        new SetLedStateCommand(&lm),
-                                                                                                        new GetLedColorCommand(&lm),
-                                                                                                        new SetLedColorCommand(&lm),
-                                                                                                        new GetLedRateCommand(&lm),
-                                                                                                        new SetLedRateCommand(&lm)});
+    std::unordered_set<std::unique_ptr<BaseCommand>> cmds;
+    cmds.insert(std::make_unique<GetLedStateCommand>(&lm));  
+    cmds.insert(std::make_unique<SetLedStateCommand>(&lm));
+    cmds.insert(std::make_unique<GetLedColorCommand>(&lm));
+    cmds.insert(std::make_unique<SetLedColorCommand>(&lm));
+    cmds.insert(std::make_unique<GetLedRateCommand>(&lm));
+    cmds.insert(std::make_unique<SetLedRateCommand>(&lm));
+
+    std::unique_ptr<CommandContainer> CC = std::make_unique<CommandContainer>(std::move(cmds));
     io::io_context io_context;
     server srv(io_context, 15001, [&] (const std::string& in, std::string& out) {CC->execute(in, out); std::cout << "in \"" << in << "\" out \"" << out << "\"" << std::endl;},
                                   [ ] (error_code& error) {std::cout << "Error occurred: "    << error.message() << std::endl;});

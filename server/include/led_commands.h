@@ -1,8 +1,8 @@
 #pragma once
 
-#include <list>
 #include <string>
 #include <memory>
+#include <unordered_set>
 // #include <functional> // for new modification (get rid of LedManager ptr in Command classes and change to)
 
 #include "led_manager.h"
@@ -130,25 +130,23 @@ public:
 // run execute when necessary
 class CommandContainer {
 public:
-    CommandContainer(const std::list<BaseCommand*>& commandsList = {}) : commandsList(commandsList) { }   
+    CommandContainer(std::unordered_set<std::unique_ptr<BaseCommand>>&& commandsList = {}) : commandsList(std::move(commandsList)) { }   
 
-    virtual ~CommandContainer() {
-        commandsList.remove_if( [] (BaseCommand* elem) { delete elem; return true; } ); // use this instead of clear() won't clean memory
-    }
+    virtual ~CommandContainer() { }
     // return true if at least one command finished successfully (processed data correctly)
     bool execute(const std::string& argument, std::string& output) {
         bool cmdWasExecuted = false;
         for (auto cmd = commandsList.begin(); cmd != commandsList.end(); ++cmd) {
             cmdWasExecuted = (*cmd)->run(argument, output);
-            std::cout << "Command executed: " << (*cmd)->getName() << std::endl;
+            // std::cout << "Command executed: " << (*cmd)->getName() << std::endl; // debug
             if (cmdWasExecuted) break;
         }
         if (!cmdWasExecuted) 
             output = "FAILED: unknown command \"" + argument + "\"";
-        std::cout << "Command was executed status: " << cmdWasExecuted << std::endl;
+        // std::cout << "Command was executed status: " << cmdWasExecuted << std::endl; // debug
         return cmdWasExecuted;
     }
 
 private:
-    std::list<BaseCommand*> commandsList;
+    std::unordered_set<std::unique_ptr<BaseCommand>> commandsList;
 };

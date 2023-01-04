@@ -64,7 +64,7 @@ public:
     }
 
     void read() {
-        memset(buffer, '\0', sizeof(buffer_size));
+        memset(buffer, '\0', buffer_size);
         // TODO: change code to non-blocking mode
         int n = ::read(sockfd, buffer, buffer_size - 1);
         if (n < 0) 

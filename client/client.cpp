@@ -44,7 +44,6 @@ public:
 
     bool connect() {
         memset(&serv_addr, '\0', sizeof(serv_addr));
-        // bzero((char *) &serv_addr, sizeof(serv_addr));
         serv_addr.sin_family = AF_INET;
         memcpy(&serv_addr.sin_addr.s_addr,
                server->h_addr,
@@ -58,7 +57,6 @@ public:
         return true;
     }
     
-    // void write(const char *buf, size_t len) {
     void write(const std::string& str) {
         int n = ::write(sockfd, str.c_str(), str.size());
         if (n < 0) 
@@ -66,9 +64,8 @@ public:
     }
 
     void read() {
-        // bzero(buffer, buffer_size);
         memset(buffer, '\0', sizeof(buffer_size));
-        // TODO: change code below to non-blocking mode
+        // TODO: change code to non-blocking mode
         int n = ::read(sockfd, buffer, buffer_size - 1);
         if (n < 0) 
             error_handler("Error: reading from socket");

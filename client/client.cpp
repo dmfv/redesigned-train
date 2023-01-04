@@ -6,6 +6,7 @@
 #include <netinet/in.h>
 #include <netdb.h>
 
+#include <cstring>
 #include <string>
 #include <iostream>
 
@@ -42,11 +43,12 @@ public:
     }
 
     bool connect() {
-        bzero((char *) &serv_addr, sizeof(serv_addr));
+        memset(&serv_addr, '\0', sizeof(serv_addr));
+        // bzero((char *) &serv_addr, sizeof(serv_addr));
         serv_addr.sin_family = AF_INET;
-        bcopy((char *)server->h_addr, 
-              (char *)&serv_addr.sin_addr.s_addr,
-              server->h_length);
+        memcpy(&serv_addr.sin_addr.s_addr,
+               server->h_addr,
+               server->h_length);
         serv_addr.sin_port = htons(portno);
         int n = ::connect(sockfd, (struct sockaddr *) &serv_addr, sizeof(serv_addr));
         if (n < 0) {
@@ -64,7 +66,8 @@ public:
     }
 
     void read() {
-        bzero(buffer, buffer_size);
+        // bzero(buffer, buffer_size);
+        memset(buffer, '\0', sizeof(buffer_size));
         // TODO: change code below to non-blocking mode
         int n = ::read(sockfd, buffer, buffer_size - 1);
         if (n < 0) 
